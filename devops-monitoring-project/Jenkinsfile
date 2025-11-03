@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('1. Checkout Code') {
+            steps {
+                echo 'Checking out code from the repository...'
+            }
+        }
+        
+        stage('2. Build Docker Image Inside Minikube') {
+            steps {
+                // **CHANGE HERE**: First, change directory into our project folder
+                dir('devops-monitoring-project') {
+                    script {
+                        echo 'Setting Docker environment to Minikube...'
+                        sh 'eval $(minikube -p minikube docker-env)'
+                        
+                        echo 'Building Docker image: web-app:latest'
+                        sh 'docker build -t web-app:latest .'
+                    }
+                }
+            }
+        }
+        
+        stage('3. Deploy to Kubernetes') {
+            steps {
+                // **CHANGE HERE**: Also change directory for kubectl commands
+                dir('devops-monitoring-project') {
+                    echo 'Deploying application to Minikube cluster...'
+                    sh 'kubectl apply -f deployment.yaml'
+                    
+                    sh 'kubectl rollout status deployment/web-app-deployment'
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Pipeline finished successfully! Application is deployed.'
+        }
+        failure {
+            echo 'Pipeline failed. Please check the logs.'
+        }
+    }
+}

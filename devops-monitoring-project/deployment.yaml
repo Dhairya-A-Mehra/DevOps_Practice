@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+      # This annotation is CRITICAL. It tells Prometheus to scrape this pod.
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8000' # The port where /metrics is exposed
+        prometheus.io/path: '/metrics'
+    spec:
+      containers:
+      - name: web-app
+        # IMPORTANT: The image name should be what you use in your Jenkins build
+        image: web-app:latest
+        imagePullPolicy: IfNotPresent # Tells K8s to use a local image if available
+        ports:
+        - containerPort: 5000 # App port
+        - containerPort: 8000 # Metrics port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app-service
+spec:
+  selector:
+    app: web-app
+  ports:
+    - name: web
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+    - name: metrics
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: NodePort # Exposes the service on a static port on the node
